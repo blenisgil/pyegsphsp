@@ -48,7 +48,6 @@ fn first_file_header_correct() {
     assert!(header.max_energy - 0.1988 < 0.0001, format!("Max energy incorrect, found {:?}", header.max_energy));
     assert!(header.min_energy - 0.0157 < 0.0001, format!("Min energy incorrect, found {:?}", header.min_energy));
     assert!(header.total_particles_in_source - 100.0 < 0.0001, format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
-    // open the first one and make sure the entries are valid
 }
 
 #[test]
@@ -61,7 +60,6 @@ fn second_file_header_correct() {
     assert!(header.max_energy - 0.1988 < 0.0001, format!("Max energy incorrect, found {:?}", header.max_energy));
     assert!(header.min_energy - 0.0157 < 0.0001, format!("Min energy incorrect, found {:?}", header.min_energy));
     assert!(header.total_particles_in_source - 100.0 < 0.0001, format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
-    // open the first one and make sure the entries are valid
 }
 
 #[test]
@@ -74,7 +72,6 @@ fn combined_file_header_correct() {
     assert!(header.max_energy - 0.1988 < 0.0001, format!("Max energy incorrect, found {:?}", header.max_energy));
     assert!(header.min_energy - 0.0157 < 0.0001, format!("Min energy incorrect, found {:?}", header.min_energy));
     assert!(header.total_particles_in_source - 100.0 * 2.0 < 0.0001, format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
-    // open the first one and make sure the entries are valid
 }
 
 #[test]

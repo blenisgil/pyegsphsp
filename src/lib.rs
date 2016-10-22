@@ -103,8 +103,7 @@ impl Header {
         &self.mode == b"MODE2"
     }
     pub fn similar_to(&self, other: &Header) -> bool {
-        self.mode == other.mode &&
-        self.total_particles == other.total_particles &&
+        self.mode == other.mode && self.total_particles == other.total_particles &&
         self.total_photons == other.total_photons &&
         self.max_energy - other.max_energy < 0.0001 &&
         self.min_energy - other.min_energy < 0.0001 &&
@@ -151,14 +150,10 @@ impl Header {
 
 impl Record {
     pub fn similar_to(&self, other: &Record) -> bool {
-        self.latch == other.latch &&
-        self.total_energy - other.total_energy < 0.0001 &&
-        self.x_cm - other.x_cm < 0.0001 &&
-        self.y_cm - other.y_cm < 0.0001 &&
-        self.x_cos - other.x_cos < 0.0001 &&
-        self.y_cos - other.y_cos < 0.0001 &&
-        self.weight - other.weight < 0.0001 &&
-        self.zlast == other.zlast
+        self.latch == other.latch && self.total_energy - other.total_energy < 0.0001 &&
+        self.x_cm - other.x_cm < 0.0001 && self.y_cm - other.y_cm < 0.0001 &&
+        self.x_cos - other.x_cos < 0.0001 && self.y_cos - other.y_cos < 0.0001 &&
+        self.weight - other.weight < 0.0001 && self.zlast == other.zlast
     }
     fn new_from_bytes(buffer: &[u8], using_zlast: bool) -> Record {
         Record {
@@ -169,18 +164,24 @@ impl Record {
             x_cos: LittleEndian::read_f32(&buffer[16..20]),
             y_cos: LittleEndian::read_f32(&buffer[20..24]),
             weight: LittleEndian::read_f32(&buffer[24..28]),
-            zlast: if using_zlast { Some(LittleEndian::read_f32(&buffer[28..32])) } else { None }
+            zlast: if using_zlast {
+                Some(LittleEndian::read_f32(&buffer[28..32]))
+            } else {
+                None
+            },
         }
     }
     fn write_to_bytes(&self, buffer: &mut [u8], using_zlast: bool) {
-    LittleEndian::write_u32(&mut buffer[0..4], self.latch);
-    LittleEndian::write_f32(&mut buffer[4..8], self.total_energy);
-    LittleEndian::write_f32(&mut buffer[8..12], self.x_cm);
-    LittleEndian::write_f32(&mut buffer[12..16], self.y_cm);
-    LittleEndian::write_f32(&mut buffer[16..20], self.x_cos);
-    LittleEndian::write_f32(&mut buffer[20..24], self.y_cos);
-    LittleEndian::write_f32(&mut buffer[24..28], self.weight);
-    if using_zlast { LittleEndian::write_f32(&mut buffer[28..32], self.weight); }
+        LittleEndian::write_u32(&mut buffer[0..4], self.latch);
+        LittleEndian::write_f32(&mut buffer[4..8], self.total_energy);
+        LittleEndian::write_f32(&mut buffer[8..12], self.x_cm);
+        LittleEndian::write_f32(&mut buffer[12..16], self.y_cm);
+        LittleEndian::write_f32(&mut buffer[16..20], self.x_cos);
+        LittleEndian::write_f32(&mut buffer[20..24], self.y_cos);
+        LittleEndian::write_f32(&mut buffer[24..28], self.weight);
+        if using_zlast {
+            LittleEndian::write_f32(&mut buffer[28..32], self.weight);
+        }
     }
 
     fn transform(buffer: &mut [u8], matrix: &[[f32; 3]; 3]) {
@@ -256,7 +257,10 @@ pub fn read_file(path: &Path) -> EGSResult<(Header, Vec<Record>)> {
 }
 
 
-pub fn combine(input_paths: &[&Path], output_path: &Path, delete_after_read: bool) -> EGSResult<()> {
+pub fn combine(input_paths: &[&Path],
+               output_path: &Path,
+               delete_after_read: bool)
+               -> EGSResult<()> {
     assert!(input_paths.len() > 0, "Cannot combine zero files");
     let path = input_paths[0];
     let mut header = try!(parse_header(&path));
@@ -331,4 +335,3 @@ pub fn transform_in_place(path: &Path, matrix: &[[f32; 3]; 3]) -> EGSResult<()> 
     }
     Ok(())
 }
-
