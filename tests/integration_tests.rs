@@ -1,16 +1,22 @@
 extern crate pyegsphsp;
 
 use std::path::Path;
+use std::fs::copy;
+use std::fs::remove_file;
+use std::fs::File;
+use std::io::prelude::*;
+use std::f64::consts;
+
 use pyegsphsp::Transform;
 use pyegsphsp::combine;
 use pyegsphsp::transform;
 use pyegsphsp::transform_in_place;
 use pyegsphsp::parse_header;
 use pyegsphsp::parse_records;
+use pyegsphsp::read_file;
+use pyegsphsp::write_file;
 use pyegsphsp::EGSResult;
-use std::fs::File;
-use std::io::prelude::*;
-use std::f64::consts;
+
 
 fn identical(path1: &Path, path2: &Path) -> bool {
     let mut file1 = File::open(path1).unwrap();
@@ -75,12 +81,41 @@ fn combined_file_header_correct() {
 }
 
 #[test]
+fn read_write_records() {
+    let input_path = Path::new("test_data/first.egsphsp");
+    let output_path = Path::new("test_data/test_records.egsphsp");
+    let (header, records) = read_file(input_path).unwrap();
+    write_file(output_path, &header, &records).unwrap();
+    remove_file(output_path).unwrap();
+}
+
+#[test]
 fn combine_operation_matches_beamdp() {
     let input_paths = vec![Path::new("test_data/first.egsphsp"), Path::new("test_data/second.egsphsp")];
-    let output_path = Path::new("test_data/output_combined.egsphsp");
+    let output_path = Path::new("test_data/test_combined_matches.egsphsp");
     let expected_path = Path::new("test_data/combined.egsphsp");
     combine(&input_paths, output_path, false).unwrap();
     assert!(identical(output_path, expected_path));
+    remove_file(output_path).unwrap();
+}
+
+#[test]
+fn combine_delete_flag() {
+    let input_path = Path::new("test_data/first.egsphsp");
+    let mut input_paths = Vec::new();
+    for i in 0..10 {
+        let path = String::from(format!("test_data/source{}.egsphsp", i));
+        copy(input_path, &path).unwrap();
+        input_paths.push(path);
+    }
+    let output_path = Path::new("test_data/test_combined_deletes.egsphsp");
+    let paths: Vec<&Path> = input_paths.iter().map(|s| Path::new(s)).collect();
+    combine(&paths, output_path, true).unwrap();
+    for path in input_paths.iter() {
+        assert!(File::open(path).is_err());
+    }
+    remove_file(output_path).unwrap();
+
 }
 
 #[test]
@@ -95,6 +130,7 @@ fn translate_operation() {
     Transform::translation(&mut matrix, -x, -y);
     transform_in_place(output_path, &matrix).unwrap();
     assert!(similar(input_path, output_path).unwrap());
+    remove_file(output_path).unwrap();
 }
 
 #[test]
@@ -106,6 +142,7 @@ fn rotate_operation() {
     transform(input_path, output_path, &matrix).unwrap();
     transform_in_place(output_path, &matrix).unwrap();
     assert!(similar(input_path, output_path).unwrap());
+    remove_file(output_path).unwrap();
 }
 
 #[test]
@@ -117,5 +154,6 @@ fn reflect_operation() {
     transform(input_path, output_path, &matrix).unwrap();
     transform_in_place(output_path, &matrix).unwrap();
     assert!(similar(input_path, output_path).unwrap());
+    remove_file(output_path).unwrap();
 }
 

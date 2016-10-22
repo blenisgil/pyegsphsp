@@ -256,6 +256,21 @@ pub fn read_file(path: &Path) -> EGSResult<(Header, Vec<Record>)> {
     Ok((header, records))
 }
 
+pub fn write_file(path: &Path, header: &Header, records: &[Record]) -> EGSResult<()> {
+    let mut file = try!(File::create(&path));
+    let mut buffer = [0; BUFFER_SIZE];
+    let mut index = 0 as usize;
+    for i in 0..records.len() {
+        while index < buffer.len() - header.record_length as usize {
+            records[i].write_to_bytes(&mut buffer[index..], header.using_zlast());
+            index += header.record_length as usize;
+        }
+        try!(file.write(&buffer[..index]));
+        index = 0;
+    }
+    Ok(())
+}
+
 
 pub fn combine(input_paths: &[&Path],
                output_path: &Path,
@@ -272,7 +287,6 @@ pub fn combine(input_paths: &[&Path],
         }
         final_header.merge(&header);
     }
-    println!("final_header = {:?}", final_header);
     let mut out_file = try!(File::create(output_path));
     let mut buffer = [0; BUFFER_SIZE];
     final_header.write_to_bytes(&mut buffer);

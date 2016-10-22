@@ -17,7 +17,7 @@ fn main() {
     let matches = App::new("beamdpr")
         .version("0.1")
         .author("Henry B. <henry.baxter@gmail.com>")
-        .about("Supplement to beamdp for combining and transforming egsphsp (EGS phase space) \
+        .about("Combine and transform egsphsp (EGS phase space) \
                 files")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(SubCommand::with_name("combine")
@@ -30,7 +30,11 @@ fn main() {
                 .short("o")
                 .long("output")
                 .takes_value(true)
-                .required(true)))
+                .required(true))
+            .arg(Arg::with_name("delete")
+                .short("d")
+                .long("delete")
+                .help("Delete input files as they are used (no going back!)")))
         .subcommand(SubCommand::with_name("translate")
             .about("Translate using X and Y (in centimeters)")
             .arg(Arg::with_name("in-place")
@@ -101,7 +105,7 @@ fn main() {
         let output_path = Path::new(sub_matches.value_of("output").unwrap());
         combine(&input_paths,
                 output_path,
-                sub_matches.is_present("delete-after"))
+                sub_matches.is_present("delete"))
     } else {
         let mut matrix = [[0.0; 3]; 3];
         match matches.subcommand_name().unwrap() {
