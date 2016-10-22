@@ -1,4 +1,5 @@
 extern crate byteorder;
+extern crate float_cmp;
 
 use std::error::Error;
 use std::fs::OpenOptions;
@@ -12,6 +13,7 @@ use std::io;
 use std::fmt;
 
 use byteorder::{ByteOrder, LittleEndian};
+use float_cmp::ApproxEqUlps;
 
 const BUFFER_SIZE: usize = 1024 * 64;
 const HEADER_LENGTH: usize = 25;
@@ -105,9 +107,9 @@ impl Header {
     pub fn similar_to(&self, other: &Header) -> bool {
         self.mode == other.mode && self.total_particles == other.total_particles &&
         self.total_photons == other.total_photons &&
-        self.max_energy - other.max_energy < 0.0001 &&
-        self.min_energy - other.min_energy < 0.0001 &&
-        self.total_particles_in_source - other.total_particles_in_source < 0.0001
+        self.max_energy.approx_eq_ulps(&other.max_energy, 2) &&
+        self.min_energy.approx_eq_ulps(&other.min_energy, 2) &&
+        self.total_particles_in_source.approx_eq_ulps(&other.total_particles_in_source, 2)
     }
     fn new_from_bytes(bytes: &[u8]) -> EGSResult<Header> {
         let mut mode = [0; 5];

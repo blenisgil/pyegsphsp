@@ -1,4 +1,5 @@
 extern crate pyegsphsp;
+extern crate float_cmp;
 
 use std::path::Path;
 use std::fs::copy;
@@ -6,6 +7,7 @@ use std::fs::remove_file;
 use std::fs::File;
 use std::io::prelude::*;
 use std::f64::consts;
+use float_cmp::ApproxEqUlps;
 
 use pyegsphsp::Transform;
 use pyegsphsp::combine;
@@ -51,9 +53,9 @@ fn first_file_header_correct() {
     assert!(header.record_length == 28);
     assert!(header.total_particles == 352, format!("Total particles incorrect, found {:?}", header.total_particles));
     assert!(header.total_photons == 303, format!("Total photons incorrect, found {:?}", header.total_photons));
-    assert!(header.max_energy - 0.1988 < 0.0001, format!("Max energy incorrect, found {:?}", header.max_energy));
-    assert!(header.min_energy - 0.0157 < 0.0001, format!("Min energy incorrect, found {:?}", header.min_energy));
-    assert!(header.total_particles_in_source - 100.0 < 0.0001, format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
+    assert!(header.max_energy.approx_eq_ulps(&0.1987891, 2), format!("Max energy incorrect, found {:?}", header.max_energy));
+    assert!(header.min_energy.approx_eq_ulps(&0.01571076, 2), format!("Min energy incorrect, found {:?}", header.min_energy));
+    assert!(header.total_particles_in_source.approx_eq_ulps(&(100.0 as f32), 2), format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
 }
 
 #[test]
@@ -63,9 +65,9 @@ fn second_file_header_correct() {
     assert!(header.record_length == 28);
     assert!(header.total_particles == 352, format!("Total particles incorrect, found {:?}, header.total_particles", header.total_particles));
     assert!(header.total_photons == 303, format!("Total photons incorrect, found {:?}", header.total_photons));
-    assert!(header.max_energy - 0.1988 < 0.0001, format!("Max energy incorrect, found {:?}", header.max_energy));
-    assert!(header.min_energy - 0.0157 < 0.0001, format!("Min energy incorrect, found {:?}", header.min_energy));
-    assert!(header.total_particles_in_source - 100.0 < 0.0001, format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
+    assert!(header.max_energy.approx_eq_ulps(&0.1987891, 2), format!("Max energy incorrect, found {:?}", header.max_energy));
+    assert!(header.min_energy.approx_eq_ulps(&0.01571076, 2), format!("Min energy incorrect, found {:?}", header.min_energy));
+    assert!(header.total_particles_in_source.approx_eq_ulps(&(100.0 as f32), 2), format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
 }
 
 #[test]
@@ -75,9 +77,9 @@ fn combined_file_header_correct() {
     assert!(header.record_length == 28);
     assert!(header.total_particles == 352 * 2, format!("Total particles incorrect, found {:?}, header.total_particles", header.total_particles));
     assert!(header.total_photons == 303 * 2, format!("Total photons incorrect, found {:?}", header.total_photons));
-    assert!(header.max_energy - 0.1988 < 0.0001, format!("Max energy incorrect, found {:?}", header.max_energy));
-    assert!(header.min_energy - 0.0157 < 0.0001, format!("Min energy incorrect, found {:?}", header.min_energy));
-    assert!(header.total_particles_in_source - 100.0 * 2.0 < 0.0001, format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
+    assert!(header.max_energy.approx_eq_ulps(&0.1987891, 2), format!("Max energy incorrect, found {:?}", header.max_energy));
+    assert!(header.min_energy.approx_eq_ulps(&0.01571076, 2), format!("Min energy incorrect, found {:?}", header.min_energy));
+    assert!(header.total_particles_in_source.approx_eq_ulps(&(100.0 * 2.0 as f32), 2), format!("Total particles in source incorrect, found {:?}", header.total_particles_in_source));
 }
 
 #[test]
