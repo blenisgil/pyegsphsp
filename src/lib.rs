@@ -40,6 +40,9 @@ pub struct Record {
 }
 
 #[derive(Debug)]
+pub struct Transform;
+
+#[derive(Debug)]
 pub enum EGSError {
     Io(io::Error),
     BadMode,
@@ -47,7 +50,7 @@ pub enum EGSError {
     ModeMismatch,
 }
 
-type EGSResult<T> = Result<T, EGSError>;
+pub type EGSResult<T> = Result<T, EGSError>;
 
 impl From<io::Error> for EGSError {
     fn from(err: io::Error) -> EGSError {
@@ -96,6 +99,17 @@ impl Header {
     fn expected_bytes(&self) -> u64 {
         (self.total_particles as u64 + 1) * self.record_length as u64
     }
+    fn using_zlast(&self) -> bool {
+        &self.mode == b"MODE2"
+    }
+    pub fn similar_to(&self, other: &Header) -> bool {
+        self.mode == other.mode &&
+        self.total_particles == other.total_particles &&
+        self.total_photons == other.total_photons &&
+        self.max_energy - other.max_energy < 0.0001 &&
+        self.min_energy - other.min_energy < 0.0001 &&
+        self.total_particles_in_source - other.total_particles_in_source < 0.0001
+    }
     fn new_from_bytes(bytes: &[u8]) -> EGSResult<Header> {
         let mut mode = [0; 5];
         mode.clone_from_slice(&bytes[..5]);
@@ -136,42 +150,69 @@ impl Header {
 
 
 impl Record {
-    // fn new_from_bytes(buffer: &[u8], using_zlast: bool) -> Record {
-    // Record {
-    // latch: LittleEndian::read_u32(&buffer[0..4]),
-    // total_energy: LittleEndian::read_f32(&buffer[4..8]),
-    // x_cm: LittleEndian::read_f32(&buffer[8..12]),
-    // y_cm: LittleEndian::read_f32(&buffer[12..16]),
-    // x_cos: LittleEndian::read_f32(&buffer[16..20]),
-    // y_cos: LittleEndian::read_f32(&buffer[20..24]),
-    // weight: LittleEndian::read_f32(&buffer[24..28]),
-    // zlast: if using_zlast { Some(LittleEndian::read_f32(&buffer[28..32])) } else { None }
-    // }
-    // }
-    // fn write_to_bytes(&self, buffer: &mut [u8], using_zlast: bool) {
-    // LittleEndian::write_u32(&mut buffer[0..4], self.latch);
-    // LittleEndian::write_f32(&mut buffer[4..8], self.total_energy);
-    // LittleEndian::write_f32(&mut buffer[8..12], self.x_cm);
-    // LittleEndian::write_f32(&mut buffer[12..16], self.y_cm);
-    // LittleEndian::write_f32(&mut buffer[16..20], self.x_cos);
-    // LittleEndian::write_f32(&mut buffer[20..24], self.y_cos);
-    // LittleEndian::write_f32(&mut buffer[24..28], self.weight);
-    // if using_zlast { LittleEndian::write_f32(&mut buffer[28..32], self.weight); }
-    // }
-    //
+    pub fn similar_to(&self, other: &Record) -> bool {
+        self.latch == other.latch &&
+        self.total_energy - other.total_energy < 0.0001 &&
+        self.x_cm - other.x_cm < 0.0001 &&
+        self.y_cm - other.y_cm < 0.0001 &&
+        self.x_cos - other.x_cos < 0.0001 &&
+        self.y_cos - other.y_cos < 0.0001 &&
+        self.weight - other.weight < 0.0001 &&
+        self.zlast == other.zlast
+    }
+    fn new_from_bytes(buffer: &[u8], using_zlast: bool) -> Record {
+        Record {
+            latch: LittleEndian::read_u32(&buffer[0..4]),
+            total_energy: LittleEndian::read_f32(&buffer[4..8]),
+            x_cm: LittleEndian::read_f32(&buffer[8..12]),
+            y_cm: LittleEndian::read_f32(&buffer[12..16]),
+            x_cos: LittleEndian::read_f32(&buffer[16..20]),
+            y_cos: LittleEndian::read_f32(&buffer[20..24]),
+            weight: LittleEndian::read_f32(&buffer[24..28]),
+            zlast: if using_zlast { Some(LittleEndian::read_f32(&buffer[28..32])) } else { None }
+        }
+    }
+    fn write_to_bytes(&self, buffer: &mut [u8], using_zlast: bool) {
+    LittleEndian::write_u32(&mut buffer[0..4], self.latch);
+    LittleEndian::write_f32(&mut buffer[4..8], self.total_energy);
+    LittleEndian::write_f32(&mut buffer[8..12], self.x_cm);
+    LittleEndian::write_f32(&mut buffer[12..16], self.y_cm);
+    LittleEndian::write_f32(&mut buffer[16..20], self.x_cos);
+    LittleEndian::write_f32(&mut buffer[20..24], self.y_cos);
+    LittleEndian::write_f32(&mut buffer[24..28], self.weight);
+    if using_zlast { LittleEndian::write_f32(&mut buffer[28..32], self.weight); }
+    }
+
     fn transform(buffer: &mut [u8], matrix: &[[f32; 3]; 3]) {
         let mut x = LittleEndian::read_f32(&buffer[8..12]);
         let mut y = LittleEndian::read_f32(&buffer[12..16]);
         let mut x_cos = LittleEndian::read_f32(&buffer[16..20]);
         let mut y_cos = LittleEndian::read_f32(&buffer[20..24]);
         x = matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * 1.0;
-        y = matrix[1][0] * x + matrix[1][1] * y + matrix[2][0] * 1.0;
+        y = matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * 1.0;
         x_cos = matrix[0][0] * x_cos + matrix[0][1] * y_cos + matrix[0][2] * 1.0;
         y_cos = matrix[1][0] * x_cos + matrix[1][1] * y_cos + matrix[1][2] * 1.0;
         LittleEndian::write_f32(&mut buffer[8..12], x);
         LittleEndian::write_f32(&mut buffer[12..16], y);
         LittleEndian::write_f32(&mut buffer[16..20], x_cos);
         LittleEndian::write_f32(&mut buffer[20..24], y_cos);
+    }
+}
+
+impl Transform {
+    pub fn reflection(matrix: &mut [[f32; 3]; 3], x_raw: f32, y_raw: f32) {
+        let norm = (x_raw * x_raw + y_raw * y_raw).sqrt();
+        let x = x_raw / norm;
+        let y = y_raw / norm;
+        *matrix =
+            [[x * x - y * y, 2.0 * x * y, 0.0], [2.0 * x * y, y * y - x * x, 0.0], [0.0, 0.0, 1.0]];
+    }
+    pub fn translation(matrix: &mut [[f32; 3]; 3], x: f32, y: f32) {
+        *matrix = [[1.0, 0.0, x], [0.0, 1.0, y], [0.0, 0.0, 1.0]];
+    }
+    pub fn rotation(matrix: &mut [[f32; 3]; 3], theta: f32) {
+        *matrix =
+            [[theta.cos(), -theta.sin(), 0.0], [theta.sin(), theta.cos(), 0.0], [0.0, 0.0, 1.0]];
     }
 }
 
@@ -187,6 +228,31 @@ pub fn parse_header(path: &Path) -> EGSResult<Header> {
     } else {
         Ok(header)
     }
+}
+
+pub fn parse_records(path: &Path, header: &Header) -> EGSResult<Vec<Record>> {
+    let mut file = try!(File::open(&path));
+    let mut buffer = [0; BUFFER_SIZE];
+    let mut records = Vec::new();
+    let mut offset = header.record_length as usize;
+    let mut read = try!(file.read(&mut buffer));
+    while read != 0 {
+        let number_records = (read - offset) / header.record_length as usize;
+        for i in 0..number_records {
+            let index = offset + i * header.record_length as usize;
+            let record = Record::new_from_bytes(&mut buffer[index..], header.using_zlast());
+            records.push(record);
+        }
+        offset = (read - offset) % header.record_length as usize;
+        read = try!(file.read(&mut buffer));
+    }
+    Ok(records)
+}
+
+pub fn read_file(path: &Path) -> EGSResult<(Header, Vec<Record>)> {
+    let header = try!(parse_header(path));
+    let records = try!(parse_records(path, &header));
+    Ok((header, records))
 }
 
 
@@ -265,54 +331,4 @@ pub fn transform_in_place(path: &Path, matrix: &[[f32; 3]; 3]) -> EGSResult<()> 
     }
     Ok(())
 }
-
-pub struct Transform;
-
-impl Transform {
-    pub fn reflection(matrix: &mut [[f32; 3]; 3], x_raw: f32, y_raw: f32) {
-        let norm = (x_raw * x_raw + y_raw * y_raw).sqrt();
-        let x = x_raw / norm;
-        let y = y_raw / norm;
-        *matrix =
-            [[x * x - y * y, 2.0 * x * y, 0.0], [2.0 * x * y, y * y - x * x, 0.0], [0.0, 0.0, 1.0]];
-    }
-    pub fn translation(matrix: &mut [[f32; 3]; 3], x: f32, y: f32) {
-        *matrix = [[1.0, 0.0, x], [0.0, 1.0, y], [0.0, 0.0, 1.0]];
-    }
-    pub fn rotation(matrix: &mut [[f32; 3]; 3], theta: f32) {
-        *matrix =
-            [[theta.cos(), -theta.sin(), 0.0], [theta.cos(), theta.sin(), 0.0], [0.0, 0.0, 1.0]];
-    }
-}
-
-/*
-    well this was supposed to be a fast one that uses constant memory but who has the time
-fn identical(path1: &Path, path2: &Path) -> bool {
-    let mut file1 = File::open(path1).unwrap();
-    let mut file2 = File::open(path2).unwrap();
-    let mut buffer1 = [0; BUFFER_SIZE];
-    let mut buffer2 = [0; BUFFER_SIZE];
-    let mut offset_buffer = [0; BUFFER_SIZE];
-    let mut read1 = file1.read(&mut buffer1).unwrap();
-    let mut read2 = file2.read(&mut buffer2).unwrap();
-    let mut offset1;
-    let mut offset2;
-    while read1 != 0 && read2 != 0 {
-        let read_both = cmp::min(read1, read2);
-        offset1 = read1 - read_both;
-        offset2 = read2 - read_both;
-        if buffer1[..read_both] != buffer2[..read_both] {
-            return false;
-        };
-        offset_buffer.clone_from_slice(&buffer1[read_both..read_both + offset1]);
-        buffer1.clone_from_slice(&offset_buffer[..offset1]);
-        offset_buffer.clone_from_slice(&buffer2[read_both..read_both + offset2]);
-        buffer2.clone_from_slice(&offset_buffer[..offset2]);
-        read1 = file1.read(&mut buffer1[offset1..]).unwrap();
-        read2 = file2.read(&mut buffer2[offset2..]).unwrap();
-    };
-    buffer1[..read_both] == buffer2[..read_both]
-}
-*/
-
 

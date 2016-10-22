@@ -6,11 +6,12 @@ use pyegsphsp::combine;
 use pyegsphsp::transform;
 use pyegsphsp::transform_in_place;
 use pyegsphsp::parse_header;
+use pyegsphsp::parse_records;
+use pyegsphsp::EGSResult;
 use std::fs::File;
 use std::io::prelude::*;
 use std::f64::consts;
 
-/// #[allow(dead_code)]
 fn identical(path1: &Path, path2: &Path) -> bool {
     let mut file1 = File::open(path1).unwrap();
     let mut file2 = File::open(path2).unwrap();
@@ -19,6 +20,22 @@ fn identical(path1: &Path, path2: &Path) -> bool {
     file1.read_to_end(&mut buf1).unwrap();
     file2.read_to_end(&mut buf2).unwrap();
     buf1.as_slice() == buf2.as_slice()
+}
+
+fn similar(path1: &Path, path2: &Path) -> EGSResult<bool> {
+    let header1 = try!(parse_header(path1));
+    let header2 = try!(parse_header(path2));
+    if !header1.similar_to(&header2) {
+        return Ok(false)
+    }
+    let records1 = try!(parse_records(path1, &header1));
+    let records2 = try!(parse_records(path2, &header2));
+    for (record1, record2) in records1.iter().zip(records2.iter()) {
+        if !record1.similar_to(&record2) {
+            return Ok(false)
+        }
+    }
+    Ok(true)
 }
 
 #[test]
@@ -80,7 +97,7 @@ fn translate_operation() {
     transform(input_path, output_path, &matrix).unwrap();
     Transform::translation(&mut matrix, -x, -y);
     transform_in_place(output_path, &matrix).unwrap();
-    assert!(identical(input_path, output_path));
+    assert!(similar(input_path, output_path).unwrap());
 }
 
 #[test]
@@ -90,9 +107,8 @@ fn rotate_operation() {
     let mut matrix = [[0.0; 3]; 3];
     Transform::rotation(&mut matrix, consts::PI as f32);
     transform(input_path, output_path, &matrix).unwrap();
-    Transform::rotation(&mut matrix, consts::PI as f32);
     transform_in_place(output_path, &matrix).unwrap();
-    assert!(identical(input_path, output_path));
+    assert!(similar(input_path, output_path).unwrap());
 }
 
 #[test]
@@ -102,8 +118,7 @@ fn reflect_operation() {
     let mut matrix = [[0.0; 3]; 3];
     Transform::reflection(&mut matrix, 1.0, 0.0);
     transform(input_path, output_path, &matrix).unwrap();
-    Transform::translation(&mut matrix, 1.0, 0.0);
     transform_in_place(output_path, &matrix).unwrap();
-    assert!(identical(input_path, output_path));
+    assert!(similar(input_path, output_path).unwrap());
 }
 

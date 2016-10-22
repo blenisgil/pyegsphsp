@@ -3,14 +3,15 @@ extern crate clap;
 extern crate pyegsphsp;
 
 use std::path::Path;
+use std::error::Error;
+
+use clap::{App, AppSettings, SubCommand, Arg};
+
 use pyegsphsp::Transform;
 use pyegsphsp::combine;
 use pyegsphsp::transform;
 use pyegsphsp::transform_in_place;
-use pyegsphsp::EGSError;
-use std::error::Error;
 
-use clap::{App, AppSettings, SubCommand, Arg};
 
 fn main() {
     let matches = App::new("beamdpr")
